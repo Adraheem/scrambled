@@ -4,10 +4,11 @@ import {IWord} from "./types";
 import {words} from "./assets/data/words";
 
 function App() {
-  const [gameCompleted, setGameCompleted] = useState<boolean>(false);
+  const [gameOver, setGameOver] = useState<boolean>(false);
   const [currentWord, setCurrentWord] = useState<IWord | undefined>()
   const [guessedIds, setGuessedIds] = useState<number[]>([]);
   const [currentGuess, setCurrentGuess] = useState<string[]>([]);
+  const [currentGuessIds, setCurrentGuessIds] = useState<number[]>([]);
   const [point, setPoint] = useState(0);
 
   const scrambledWord: string[] | undefined = useMemo(() => {
@@ -25,7 +26,7 @@ function App() {
   const nextGuess = useCallback(() => {
     const filteredArray = words.filter((_, index) => !guessedIds.includes(index));
     if (filteredArray.length === 0) {
-      setGameCompleted(true);
+      setGameOver(true);
       return;
     }
     const randomIndex = Math.floor(Math.random() * filteredArray.length);
@@ -39,44 +40,66 @@ function App() {
         nextGuess();
         setGuessedIds([]);
         setCurrentGuess([]);
+        setCurrentGuessIds([]);
+      } else if (currentGuess.length >= currentWord.word.length) {
+        setGameOver(true);
       }
     }
   }, [currentGuess, currentWord, nextGuess]);
 
+  useEffect(() => {
+    nextGuess();
+  }, [nextGuess]);
+
   const resetGame = () => {
-    setCurrentWord(undefined);
+    nextGuess();
     setGuessedIds([])
     setCurrentGuess([])
-    setGameCompleted(false);
+    setCurrentGuessIds([])
+    setGameOver(false);
     setPoint(0);
   }
 
+  if (gameOver) {
+    return <div className="flex flex-col items-center text-center gap-6 py-10">
+      <h2 className="text-white bg-red-500 p-8 rounded-3xl border-4 border-black">Game over</h2>
+      <p>Your point is</p>
+      <h1 className="btn">{point}</h1>
+
+      <div>
+        <button onClick={resetGame} className="button">Start again</button>
+      </div>
+    </div>
+  }
 
   return (
-    <div className="App">
-      <div>Point: {point}</div>
+    <div className="flex flex-col items-center text-center gap-6 py-10">
+      <h5 className="btn">Point: {point}</h5>
       <div>
         <p>Options</p>
 
-        <div>
+        <div className="btn-group">
           {
-            scrambledWord?.map((w, idx) => (
-              <button key={idx} onClick={() => {
+            scrambledWord?.map((w, idx) => currentGuessIds.includes(idx) ? null : (
+              <button key={idx} className="btn" onClick={() => {
                 setCurrentGuess(prev => [...prev, w])
+                setCurrentGuessIds(prev => [...prev, idx])
               }}>{w}</button>
             ))
           }
         </div>
+        <p className="mt-2 italic">Hint: {currentWord?.hint}</p>
       </div>
 
       <div>
         <p>Your guess</p>
 
-        <div>
+        <div className="btn-group">
           {
             currentGuess?.map((w, idx) => (
-              <button key={idx} onClick={() => {
+              <button key={idx} className="btn" onClick={() => {
                 setCurrentGuess(prev => prev.filter((_, i) => i !== idx))
+                setCurrentGuessIds(prev => prev.filter((_, i) => i !== idx))
               }}>{w}</button>
             ))
           }
@@ -84,7 +107,7 @@ function App() {
       </div>
 
       <div>
-        <button onClick={resetGame}>reset game</button>
+        <button onClick={resetGame} className="button">reset game</button>
       </div>
     </div>
   );
